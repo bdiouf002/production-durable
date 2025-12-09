@@ -1,7 +1,6 @@
 import pandas as pd
 import streamlit as st
 import numpy as np
-import plotly.express as px
 import plotly.graph_objects as go 
 # N'oubliez pas d'installer statsmodels pour la ligne de tendance
 
