@@ -12,7 +12,7 @@ st.title("Production Durable")
 st.markdown("Analyse de la production durable dans les différents secteurs")
 
 # Assurez-vous que ce chemin est correct
-file_path = "electricite.xlsx"
+file_path = "Données.xlsx"
 
 # --- 1.1 Fonctions de Nettoyage (Centralisées) ---
 
