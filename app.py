@@ -248,7 +248,7 @@ with tab_elec:
     st.bar_chart(df_prg_chart)
    
     st.markdown("---")
-    st.header("Mix Électrique National et Empreinte Moyenne (Filtré)")
+    st.header("Contribution des différentes sources d’énergie à la production d’électricité")
 
 
     mix_options = {'🇫🇷 France (FR)': 'FR_Mix', '🇩🇪 Allemagne (DE)': 'DE_Mix', '🇨🇭 Suisse (CH)': 'CH_Mix', '🇮🇹 Italie (IT)': 'IT_Mix'}
