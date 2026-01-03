@@ -3,26 +3,72 @@ import streamlit as st
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
-# N'oubliez pas d'installer statsmodels pour la ligne de tendance
+#Pour faire le style
+st.markdown(
+    
+    """
+    <style>
+    /* Fond de l'application en Vert Foncé */
+    .stApp {
+        background-color: #1b5e20;
+    }
 
+    /* Style des titres pour qu'ils soient visibles sur le vert foncé */
+    h1, h2, h3, p, span, label {
+        color: #ffffff !important;
+    }
 
-# --- 1. Configuration et Lecture des Données ---
-# N'oubliez pas d'installer statsmodels pour la ligne de tendance
+    /* Panneaux des onglets : on garde un fond blanc/clair pour les graphiques */
+    [data-baseweb="tab-panel"] {
+        background-color: #ffffff;
+        padding: 30px;
+        border-radius: 15px;
+        box-shadow: 0px 10px 25px rgba(0, 0, 0, 0.3);
+    }
+    
+    /* Adaptation des textes à l'intérieur des onglets blancs */
+    [data-baseweb="tab-panel"] p, 
+    [data-baseweb="tab-panel"] h1, 
+    [data-baseweb="tab-panel"] h2, 
+    [data-baseweb="tab-panel"] h3,
+    [data-baseweb="tab-panel"] span {
+        color: #1b5e20 !important;
+    }
 
+    /* Style des onglets eux-mêmes (en haut) */
+    button[data-baseweb="tab"] {
+        color: #ffffff !important;
+        font-weight: bold;
+    }
+    
+    button[aria-selected="true"] {
+        background-color: rgba(255, 255, 255, 0.2) !important;
+        border-radius: 10px 10px 0 0;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
-# --- 1. Configuration et Lecture des Données ---
-
-
+# --- En-tête avec Titre et Logo ---
 st.set_page_config(layout="wide")
-st.title("Production Durable")
-st.markdown("Analyse de la production durable dans les différents secteurs")
+col_title, col_logo = st.columns([4, 1])
+#titre
+st.title("🌱Production Durable")
+st.markdown("Analyse de la production durable dans différents secteurs")
 
+#Création du logo
+with col_logo :
+    try:
+        st.image("logo.jpg", width=200) 
+    except:
+        st.write("Logo ici 🖼️") # Message de secours si l'image manque
 
-# Assurez-vous que ce chemin est correct
+# Pour charger les données
 file_path = "Données.xlsx"
 
 
-# --- 1.1 Fonctions de Nettoyage (Centralisées) ---
+# --- 2. Fonctions de Nettoyage (Centralisées) ---
 
 
 def clean_numeric_mix(value):
@@ -57,17 +103,17 @@ def clean_emissions_range_avg(value):
 
 @st.cache_data
 def load_and_prepare_data(file_path):
-   
+    
     # Initialisation
-    df_raw_eu, df_ciment, df_electro_agg, df_electro_detail, df_electro_size_power, df_impact_numerique = None, None, None, None, None, None
-   
+    df_raw_eu, df_ciment, df_electro_agg, df_electro_detail, df_electro_size_power, df_impact_numerique, df_v_plot, df_v2_plot = None, None, None, None, None, None, None, None
+    
     # Création du DataFrame de substitution pour Electroniques3
     data_substitute = {
         'Taille_Ecran_Pouces': [20, 25, 30, 35, 40, 45, 50, 55, 60],
         'Puissance_W': [18, 24, 30, 42, 60, 70, 85, 100, 145]
     }
-    df_electro_size_power_sub = pd.DataFrame(data_substitute)
-   
+    df_electro_size_power_sub = pd.DataFrame(data_substitute) 
+    
     # --- DONNÉES DU NOUVEAU GRAPHIQUE (Impact Numérique - Extraction des images) ---
     # Ces données sont utilisées si la feuille 'Electronique4' est introuvable
     data_impact_numerique = {
@@ -82,8 +128,8 @@ def load_and_prepare_data(file_path):
         '2050': [187, 179, 79, 59]
     }
     df_impact_numerique_sub = pd.DataFrame(data_impact_numerique).set_index('Indicateur')
-   
-   
+    
+    
     try:
         # Tente de charger toutes les feuilles
         df_raw_eu = pd.read_excel(file_path, sheet_name="Electricite", skiprows=1, header=None)
@@ -91,15 +137,25 @@ def load_and_prepare_data(file_path):
         df_electro_agg = pd.read_excel(file_path, sheet_name="Electroniques")
         df_electro_detail = pd.read_excel(file_path, sheet_name="Electroniques2")
         df_electro_size_power = pd.read_excel(file_path, sheet_name="Electroniques3")
-       
-        # Tente de charger la NOUVELLE feuille demandée (Electronique4)
-        try:
-             # Assurez-vous que la première colonne est "Indicateur" pour être mise en index
-             df_impact_numerique = pd.read_excel(file_path, sheet_name="Electronique4").set_index('Indicateur')
-        except Exception:
-             st.warning("La feuille 'Electroniques4' n'a pas été trouvée. Utilisation des données substituts du graphique pour l'impact numérique.")
-             df_impact_numerique = df_impact_numerique_sub
-       
+        df_v_plot = pd.read_excel(file_path, sheet_name="Vehicules")
+        df_tex_habill = pd.read_excel(file_path, sheet_name="textile et habillement")
+        df_v2_plot = pd.read_excel(file_path, sheet_name="Vehicules2")
+
+
+    # --- PRÉPARATION VÉHICULES ---
+        
+            # Nettoyage : suppression des lignes vides sur les colonnes clés
+        df_v_plot = df_v_plot.dropna(subset=['Mode de propulsion', 'Émissions totales (g équiv. CO2/km)'])
+      # --- PRÉPARATION textile et habillement ---    
+    # On définit la première colonne comme index (Fibre textile)
+        df_tex_habill = df_tex_habill.set_index(df_tex_habill.columns[0])
+    
+    # Nettoyage des plages de valeurs (ex: "2,1 - 3,6" -> 2.85)
+        for col in df_tex_habill.columns:
+            df_tex_habill[col] = df_tex_habill[col].apply(clean_emissions_range_avg)
+    
+        
+        
     except Exception as e:
         # Gestion des erreurs de chargement initial
         if "Electroniques3" in str(e):
@@ -107,9 +163,9 @@ def load_and_prepare_data(file_path):
              df_electro_size_power = df_electro_size_power_sub
         else:
              st.error(f"Erreur lors du chargement des données. Détail: {e}")
-             return None, None, None, None, None, None
-   
-   
+             return None*9
+    
+    
     # --- Préparation Électricité ---
     expected_names = ['Technologie', 'PRG_UE_str', 'PRG_MONDE_str', 'FR_Mix', 'DE_Mix', 'CH_Mix', 'IT_Mix', 'G_Source']
     try:
@@ -117,7 +173,7 @@ def load_and_prepare_data(file_path):
     except ValueError:
         st.error("Erreur de colonnes dans la feuille EU. Veuillez vérifier la structure.")
         return None, None, None, None, None, None
-       
+        
     df_eu = df_raw_eu.dropna(subset=['Technologie']).copy()
     df_eu = df_eu[~df_eu['Technologie'].isin(['...', 'Total (Facteur émission du Mix Final)'])]
     df_eu = df_eu.reset_index(drop=True)
@@ -129,24 +185,13 @@ def load_and_prepare_data(file_path):
     for col in mix_cols:
         df_eu[col] = df_eu[col].apply(clean_numeric_mix)
     df_eu['PRG_Num_UE'] = df_eu['PRG_UE_str'].apply(clean_emissions_range_avg)
-   
-    # --- Préparation Ciment (Code omis pour la concision) ---
-    df_ciment = df_ciment.copy()
-    ciment_column_mapping = {
-        'Type de Ciment (Norme EN 197-1': 'Type_de_Ciment',
-        'Teneur en Clinker (Ordre de grandeur) en %': 'Clinker_str',
-        'Potentiel de Réchauffement Global (PRG) kg eqCO₂/tonne': 'PRG_Ciment_str'
-    }
-    df_ciment = df_ciment.rename(columns=ciment_column_mapping, errors='ignore')
-   
-    if 'Clinker_str' in df_ciment.columns and 'PRG_Ciment_str' in df_ciment.columns and 'Type_de_Ciment' in df_ciment.columns:
-        df_ciment['Clinker_Num'] = df_ciment['Clinker_str'].apply(clean_emissions_range_avg)
-        df_ciment['PRG_Ciment_Num'] = df_ciment['PRG_Ciment_str'].apply(clean_emissions_range_avg)
-        df_ciment = df_ciment.dropna(subset=['Type_de_Ciment']).set_index('Type_de_Ciment')
-    else:
-        df_ciment = None
-       
-    # --- Préparation Electroniques AGRÉGÉES (Code omis pour la concision) ---
+    
+    # On nettoie pour ne garder que les lignes de données (CEM I, II, III)
+    # et on exclut la ligne "Source Officielle" pour le graphique
+    df_ciment = df_ciment[df_ciment.iloc[:, 0].str.contains("CEM", na=False)]
+    df_ciment = df_ciment.set_index(df_ciment.columns[0])
+        
+    # --- Préparation Electroniques AGRÉGÉES  ---
     if df_electro_agg is not None:
         df_electro_agg = df_electro_agg.copy()
         electro_column_mapping = {
@@ -158,15 +203,15 @@ def load_and_prepare_data(file_path):
 
 
         required_cols = ['Categorie', 'Part_Terminaux', 'Part_Empreinte_Carbone']
-       
+        
         if all(col in df_electro_agg.columns for col in required_cols):
             for col in ['Part_Terminaux', 'Part_Empreinte_Carbone']:
                 df_electro_agg[f'{col}_Num'] = df_electro_agg[col].apply(clean_numeric_mix)
             df_electro_agg = df_electro_agg.dropna(subset=['Categorie']).set_index('Categorie')
         else:
             df_electro_agg = None
-           
-    # --- Préparation Electroniques DÉTAILLÉES (Code omis pour la concision) ---
+            
+    # --- Préparation Electroniques DÉTAILLÉES  ---
     if df_electro_detail is not None:
         df_electro_detail = df_electro_detail.copy()
         detail_column_mapping = {
@@ -177,21 +222,21 @@ def load_and_prepare_data(file_path):
 
 
         required_cols_detail = ['Categorie', 'Part_Empreinte_Carbone']
-       
+        
         if all(col in df_electro_detail.columns for col in required_cols_detail):
             df_electro_detail['Part_Empreinte_Carbone_Num'] = df_electro_detail['Part_Empreinte_Carbone'].apply(clean_numeric_mix)
             df_electro_detail = df_electro_detail.dropna(subset=['Categorie']).set_index('Categorie')
         else:
             df_electro_detail = None
-           
-    # --- PRÉPARATION DU NUAGE DE POINTS (Code omis pour la concision) ---
+            
+    # --- PRÉPARATION DU NUAGE DE POINTS  ---
     if df_electro_size_power is not None and df_electro_size_power is not df_electro_size_power_sub:
         size_power_mapping = {
              'Taille d\'écran (pouces)': 'Taille_Ecran_Pouces',
              'Puissance Utilisée (W)': 'Puissance_W'
         }
         df_electro_size_power = df_electro_size_power.rename(columns=size_power_mapping, errors='ignore')
-       
+        
         required_cols_sp = ['Taille_Ecran_Pouces', 'Puissance_W']
 
 
@@ -201,10 +246,10 @@ def load_and_prepare_data(file_path):
              df_electro_size_power = df_electro_size_power.dropna(subset=required_cols_sp)
         else:
             df_electro_size_power = df_electro_size_power_sub
-           
+            
     elif df_electro_size_power is None:
         df_electro_size_power = df_electro_size_power_sub
-       
+        
     # --- Assigner df_impact_numerique à la version substitut si le chargement a échoué ---
     if df_impact_numerique is None:
          df_impact_numerique = df_impact_numerique_sub
@@ -217,11 +262,11 @@ def load_and_prepare_data(file_path):
 
 
     # Le retour de la fonction inclut maintenant df_impact_numerique
-    return df_eu, df_ciment, df_electro_agg, df_electro_detail, df_electro_size_power, df_impact_numerique
-
+   
+    return df_eu, df_ciment, df_electro_agg, df_electro_detail, df_electro_size_power, df_impact_numerique, df_v_plot, df_tex_habill, df_v2_plot
 
 # Lancement du chargement
-df_eu, df_ciment, df_electro_agg, df_electro_detail, df_electro_size_power, df_impact_numerique = load_and_prepare_data(file_path)
+df_eu, df_ciment, df_electro_agg, df_electro_detail, df_electro_size_power, df_impact_numerique, df_v_plot, df_tex_habill, df_v2_plot = load_and_prepare_data(file_path)
 
 
 if df_eu is None:
@@ -229,131 +274,212 @@ if df_eu is None:
 
 
 # --- 2. Définition des Onglets (Reste inchangé) ---
-
-
 tab_elec, tab_ciment, tabs_electro = st.tabs([
-    "Secteur de l'Énergie & transport:⚡️ Analyse Électrique (Mix & PRG)",
-    "🧱 Secteur de la Construction : Analyse du Ciment",
-    "Secteur industriel (Numérique) 💻"
+    "Secteur de l'Énergie & transport",
+    "🧱 Secteur de la Construction & matériaux ",
+    "Secteur industriel"
 ])
 # -----------------------------------------------------------
 # Contenu du Premier Onglet : Analyse Électrique
 # -----------------------------------------------------------
 
+with tab_elec :
+    st.header("⚡️ Analyse Électrique (Mix & PRG)")
 
-with tab_elec:
     st.header("Empreinte carbone selon les sources de production d’électricité dans UE")
-   
+    
     df_prg_chart = df_eu[['PRG_Num_UE']].sort_values(by='PRG_Num_UE', ascending=False)
     st.bar_chart(df_prg_chart)
-   
+    st.caption("Source : (Ecoinvent / GaBi), Wikipédia")
+    st.info("**Analyse :** l’électricité produite à partir du charbon est celle qui génère le plus d’émissions de CO₂, suivie par le gaz naturel. À l’inverse, l’électricité d’origine nucléaire présente une empreinte carbone plus faible et peut être considérée comme une source à faible intensité carbone.")
+    
     st.markdown("---")
-    st.header("Contribution des différentes sources d’énergie à la production d’électricité")
-
-
+    st.header(" Contribution au Mix Final dans differents pays en 2023")
     mix_options = {'🇫🇷 France (FR)': 'FR_Mix', '🇩🇪 Allemagne (DE)': 'DE_Mix', '🇨🇭 Suisse (CH)': 'CH_Mix', '🇮🇹 Italie (IT)': 'IT_Mix'}
     col1, col2 = st.columns([1, 2])
-   
     mix_selection_label = col1.selectbox('**Sélectionnez le Pays à Analyser**', options=list(mix_options.keys()), key='elec_mix_selector')
     mix_column = mix_options[mix_selection_label]
-
-
     prg_pour_calcul = df_eu['PRG_Num_UE']
     proportion_mix = df_eu[mix_column] / 100
     empreinte_moyenne = (prg_pour_calcul * proportion_mix).sum()
-
-
     col2.metric(label=f"Empreinte Carbone Moyenne du Mix Électrique : {mix_selection_label}", value=f"{empreinte_moyenne:.2f} g eqCO₂/kWh", delta="Indicateur de Durabilité")
-    st.markdown("---")
-
-
     df_pie = df_eu[[mix_column]].reset_index()
     df_pie.columns = ['Technologie', 'Part']
     fig = px.pie(df_pie, values='Part', names='Technologie', title=f'Répartition du Mix Électrique : {mix_selection_label}', hover_data=['Part'], labels={'Part':'Part (%)'})
     fig.update_traces(textposition='inside', textinfo='percent+label')
     st.plotly_chart(fig, use_container_width=True)
+    st.caption("Source : ADEM,..")
+    st.info("**Analyse :** Dans le cas de la Suisse, on observe que l’hydroélectricité domine largement le mix électrique avec 56,3 de pourcentage, suivie du nucléaire à hauteur de 32,2 de pourcentage.")
 
+
+    st.markdown("---")
+    st.header("Empreinte carbone des types de voitures🚗")
+    if df_v_plot is not None:
+        fig_vehicule = px.bar(
+            df_v_plot,
+            x='Mode de propulsion',
+            y='Émissions totales (g équiv. CO2/km)',
+            color='Mode de propulsion',
+            text='Émissions totales (g équiv. CO2/km)',
+            title="Émissions de CO2e par kilomètre selon le mode de propulsion",
+            labels={'Émissions totales (g équiv. CO2/km)': 'g CO2e/km'},
+            color_discrete_sequence=px.colors.qualitative.Pastel
+        )
+        fig_vehicule.update_traces(texttemplate='%{text} g', textposition='outside')
+        st.plotly_chart(fig_vehicule, use_container_width=True)
+    else:
+        st.error("Les données des véhicules n'ont pas pu être chargées.")
+    st.caption("Source : Mobileservice")
+    st.info("**Analyse :** les voitures à essence sont celles qui génèrent le plus d’émissions de CO₂, avec environ 264 g, suivies des voitures diesel à hauteur de 243 g. À l’inverse, les voitures électriques présentent l’empreinte carbone la plus faible.")
+
+
+    st.markdown("---")
+    st.header("📊 Nouvelles immatriculations (Suisse & Liechtenstein)")
+
+    if df_v2_plot is not None:
+        # Transformation des données pour Plotly
+        df_melted_v2 = df_v2_plot.melt(
+            id_vars='Année', 
+            var_name='Motorisation', 
+            value_name='Part de marché (%)'
+        )
+
+        # Création du graphique
+        fig_v2 = px.bar(
+            df_melted_v2,
+            x='Année',
+            y='Part de marché (%)',
+            color='Motorisation',
+            barmode='group',
+            title='Évolution des immatriculations par type de motorisation',
+            color_discrete_map={
+                'Essence': '#ef553b',
+                'Diesel': '#f4a582',
+                'BEV (électrique)': '#1f77b4',
+                'PHEV (hybride rechargeable)': '#46bac2'
+            }
+        )
+        
+        fig_v2.update_layout(xaxis=dict(tickmode='linear'), hovermode="x unified")
+        st.plotly_chart(fig_v2, use_container_width=True)
+    else:
+        st.error("Données 'Vehicules2' manquantes.")
+    st.info("**Analyse :** le recul des motorisations essence et diesel, parallèlement à la montée des véhicules électriques (BEV) et hybrides rechargeables (PHEV), traduisant une orientation progressive de la Suisse vers des modes de production et de mobilité plus durables. ")
+
+    try:
+        st.image("image1.png", use_container_width=True)
+    except FileNotFoundError:
+        st.error("L'image locale est introuvable. Vérifiez le chemin : images/votre_image_locale.png")
+    try:
+        st.image("image2.png", use_container_width=True)
+    except FileNotFoundError:
+        st.error("L'image locale est introuvable. Vérifiez le chemin : images/votre_image_locale.png")
+    try:
+        st.image("image3.png", caption="Source : Mobileservice", use_container_width=True)
+    except FileNotFoundError:
+        st.error("L'image locale est introuvable. Vérifiez le chemin : images/votre_image_locale.png")
 
 # -----------------------------------------------------------
-# Contenu du Deuxième Onglet : Analyse Ciment
+# Contenu du Deuxième Onglet : Analyse Ciment 
 # -----------------------------------------------------------
 
 
 with tab_ciment:
-    st.header("Analyse d'Empreinte Carbone et de Composition du Ciment 🧱")
-    st.markdown("---")
-   
-    if df_ciment is None or 'PRG_Ciment_Num' not in df_ciment.columns:
-        st.warning("Le chargement des données Ciment a échoué. Veuillez vérifier les noms des colonnes de votre feuille.")
-    else:
-        ciment_options = {
-            'Potentiel de Réchauffement Global (Valeur calculée)': 'PRG_Ciment_Num',
-            'Potentiel de Réchauffement Global (Intervalle)': 'PRG_Ciment_str',
-            'Teneur en Clinker (Valeur calculée)': 'Clinker_Num',
-            'Teneur en Clinker (Intervalle)': 'Clinker_str'
-        }
+    st.header("🧱 Comparatif International par Type de Ciment")
+    if df_ciment is not None:
+        # 1. Nettoyage : On ne garde que les lignes CEM et on enlève la ligne "Source Officielle"
+        df_clean = df_ciment.loc[['CEM I (Portland)', 'CEM II (Moyen)', 'CEM III (Bas Carbone)']]
+        
+        # 2. Pivotement : On transpose pour avoir les Pays sur l'axe X
+        # .T transforme les colonnes (Pays) en lignes
+        df_t = df_clean.T.reset_index()
+        df_t.columns = ['Pays', 'CEM I', 'CEM II', 'CEM III']
 
+        # 3. Transformation pour Plotly (format long)
+        df_plot = df_t.melt(id_vars='Pays', var_name='Type de Ciment', value_name='kg CO2/t')
 
-        selection_label = st.selectbox(
-            '**Sélectionnez la Variable à Afficher**',
-            options=list(ciment_options.keys()),
-            key='ciment_selector'
+        # 4. Création du graphique avec Pays sur l'axe X
+        fig_pays = px.bar(
+            df_plot,
+            x='Pays', 
+            y='kg CO2/t',
+            color='Type de Ciment',
+            barmode='group',
+            title="Comparaison de l'empreinte carbone par pays et par type de ciment",
+            color_discrete_sequence=px.colors.qualitative.Antique
         )
-        data_column = ciment_options[selection_label]
-        is_interval = data_column.endswith('_str')
 
-
-        if not is_interval:
-            try:
-                valeur_moyenne = df_ciment.loc['Moyenne Européenne (Tous types)', data_column]
-                st.metric(label=f"Moyenne Européenne ({selection_label})", value=f"{valeur_moyenne:.0f}", delta="Référence du marché")
-            except:
-                st.warning("La moyenne européenne n'a pas pu être affichée (ligne 'Moyenne Européenne (Tous types)' manquante).")
-        else:
-            st.info("La métrique moyenne n'est pas disponible pour l'affichage des intervalles.")
-           
-        st.markdown("---")
-
-
-        df_chart_ciment = df_ciment[[data_column]].copy()
-        df_chart_ciment = df_chart_ciment.drop('Moyenne Européenne (Tous types)', errors='ignore')
-       
-        if is_interval:
-            st.subheader(f"Affichage par Intervalle : {selection_label}")
-            df_display = df_chart_ciment.reset_index()
-            df_display.columns = ['Type de Ciment', 'Intervalle/Plage']
-            st.dataframe(df_display, hide_index=True)
-            st.warning("Les intervalles de texte ne peuvent pas être affichés directement sur un graphique à barres Plotly.")
-        else:
-            fig_ciment = px.bar(
-                df_chart_ciment,
-                x=df_chart_ciment.index,
-                y=data_column,
-                title=f"Comparaison des Types de Ciment selon la variable : {selection_label}",
-                labels={'x': 'Type de Ciment', 'y': selection_label},
-                color=data_column,
-                color_continuous_scale=px.colors.sequential.Bluered
-            )
-            st.plotly_chart(fig_ciment, use_container_width=True)
-
-
+        st.plotly_chart(fig_pays, use_container_width=True)
+        st.info("**Analyse :** le ciment CEM I (Portland) est celui qui génère le plus d’émissions de CO₂ dans l’ensemble des pays étudiés, bien que son niveau varie d’un pays à l’autre. Il est notamment plus faible en Suisse, avec environ 765 kg CO₂e par tonne, et plus élevé en Italie. Le ciment CEM II présente une empreinte carbone intermédiaire, inférieure à celle du CEM I dans certains pays, mais restant néanmoins significative. À l’inverse, le CEM III affiche l’empreinte carbone la plus faible, ce qui en fait une alternative plus favorable d’un point de vue environnemental.")
+        # Affichage des sources pour valider la fiabilité
+        st.markdown("### 🔍 Détails des sources et fiabilité")
+        st.write("Les données proviennent des inventaires nationaux certifiés :")
+        st.info("- **France** : 860 kg (CEM I) via **Base INIES**")
+        st.info("- **Suisse** : 765 kg (CEM I) via **cimentsuisse**")
+        st.info("- **Allemagne** : Données via **Ökobaudat**")
 # -----------------------------------------------------------
 # Contenu du Troisième Onglet : Secteur Industriel (Numérique)
 # -----------------------------------------------------------
 
 
 with tabs_electro:
-    st.header("📊 Numérique : Analyse de l'Impact Carbone des Équipements")
-   
-    # --- GRAPHIQUE 1 : BARRES GROUPÉES (Données Agrégées - Electroniques) ---
+     # --- GRAPHIQUE 1 :
     st.markdown("---")
-    st.subheader("1. Répartition des Terminaux vs. Part de l'Empreinte Carbone (Agrégé)")
-   
+    st.header("🧵 Impact Environnemental du Textile et de l'Habillement")
+    
+    if df_tex_habill is not None:
+        # On transpose pour avoir les Pays sur l'axe X
+        df_tex_habill_t = df_tex_habill.T.reset_index()
+        df_tex_habill_t.columns = ['Pays'] + list(df_tex_habill.index)
+        
+        # Transformation pour Plotly
+        df_tex_habill = df_tex_habill_t.melt(id_vars='Pays', var_name='Fibre', value_name='kg CO2e/kg')
+        
+        fig_textile = px.bar(
+            df_tex_habill,
+            x='Pays',
+            y='kg CO2e/kg',
+            color='Fibre',
+            barmode='group',
+            title="Empreinte carbone par type de fibre textile et par pays",
+            labels={'kg CO2e/kg': 'Émissions (kg CO2e par kg de fibre)'},
+            color_discrete_sequence=px.colors.qualitative.Safe
+        )
+        
+        st.plotly_chart(fig_textile, use_container_width=True)
+        
+        st.info("**Analyse :** La laine présente l'impact le plus élevé (jusqu'à 32 kg CO2e/kg en Pologne), tandis que le chanvre et le lin sont les options les plus durables.")
+
+    
+    # --- GRAPHIQUE 2 3 et 4 :
+    st.markdown("---")
+    st.header("📊 Numérique : Analyse de l’impact du numérique sur l’environnement en Suisse")
+    try:
+        st.image("image4.png", caption="Source : E4S & Resilio White Paper", use_container_width=True)
+    except FileNotFoundError:
+        st.error("L'image locale est introuvable. Vérifiez le chemin : images/votre_image_locale.png")
+    st.info("**Analyse :** Les équipements (Tier I) concentrent la majorité des impacts environnementaux, tant en termes d’empreinte carbone (GWP) que d’épuisement des ressources (ADP), avec une contribution dominante des équipements à usage personnel")
+
+    try:
+        st.image("image5.png", caption="Source : E4S & Resilio White Paper", use_container_width=True)
+    except FileNotFoundError:
+        st.error("L'image locale est introuvable. Vérifiez le chemin : images/votre_image_locale.png")
+    st.info("**Analyse :** En matière d’empreinte carbone des équipements à usage personnel, les smartphones constituent le principal poste d’impact, avec environ 26 %. Ils contribuent également à l’épuisement des ressources, mais leur part reste inférieure à celle des télévisions.")
+    try:
+        st.image("image6.png", caption="Source : E4S & Resilio White Paper", use_container_width=True)
+    except FileNotFoundError:
+        st.error("L'image locale est introuvable. Vérifiez le chemin : images/votre_image_locale.png")
+    st.info("**Analyse :** En ce qui concerne l’empreinte carbone des équipements à usage professionnel, les ordinateurs constituent la principale source d’impact. En revanche, pour l’épuisement des ressources, ce sont les télévisions et les écrans d’ordinateur qui contribuent le plus.")
+
+    # --- GRAPHIQUE 5 :
+    st.markdown("---")
+    st.subheader(" Répartition des Terminaux vs. Part de l'Empreinte Carbone en France")
+    
     if df_electro_agg is None:
         st.warning("Les données agrégées (Feuille Electroniques) pour ce graphique ne sont pas disponibles.")
     else:
         st.markdown("Ce graphique compare, pour chaque catégorie, le **Pourcentage d'équipements** (Bleu) et le **Pourcentage d'empreinte carbone** (Rouge).")
-       
+        
         df = df_electro_agg.reset_index().copy()
         df.columns.values[0] = 'Categorie'
 
@@ -371,7 +497,7 @@ with tabs_electro:
             'Part_Terminaux_Num': 'Répartition des Terminaux',
             'Part_Empreinte_Carbone_Num': "Part de l'Empreinte Carbone"
         })
-       
+        
         df_long['Texte_Pourcentage'] = df_long['Pourcentage'].apply(lambda x: f"{x:.0f}%" if pd.notna(x) else "")
         cat_order = df.sort_values('Part_Terminaux_Num', ascending=False)['Categorie'].tolist()
 
@@ -389,7 +515,7 @@ with tabs_electro:
             category_orders={"Categorie": cat_order},
             text='Texte_Pourcentage'
         )
-       
+        
         fig_bar.update_traces(textposition='outside', cliponaxis=False)
         max_pourcentage = df_long['Pourcentage'].max()
         fig_bar.update_layout(font_size=10, height=500, xaxis=dict(range=[0, max_pourcentage * 1.15]))
@@ -397,22 +523,22 @@ with tabs_electro:
 
         st.plotly_chart(fig_bar, use_container_width=True)
         st.caption("Source : Rapport ADEME (2020) – La face cachée du numérique.")
+    
 
 
 
-
-    # --- GRAPHIQUE 2 : CAMEMBERT (Données Détaillées - Electroniques2) ---
+    # --- GRAPHIQUE 6 : CAMEMBERT (Données Détaillées - Electroniques2) ---
     st.markdown("---")
-    st.subheader("2. Répartition détaillée de l'Empreinte Carbone du Numérique")
-   
+    st.subheader(" Répartition détaillée de l'Empreinte Carbone du Numérique")
+    
     if df_electro_detail is None:
         st.warning("Les données détaillées (Feuille Electroniques2) pour le graphique circulaire ne sont pas disponibles.")
     else:
         df_pie_electro = df_electro_detail.reset_index().copy()
-       
+        
         value_col = 'Part_Empreinte_Carbone_Num'
         name_col = 'Categorie'
-       
+        
         df_pie_electro = df_pie_electro.dropna(subset=[value_col])
 
 
@@ -423,7 +549,7 @@ with tabs_electro:
             title='Répartition détaillée de l\'Empreinte Carbone du Numérique (Terminaux + DataCenters)',
             category_orders={name_col: df_pie_electro.sort_values(value_col, ascending=False)[name_col].tolist()}
         )
-       
+        
         pull_list = [0.05 if name in ['DataCenters et réseaux', 'Smartphones'] else 0 for name in df_pie_electro[name_col]]
 
 
@@ -432,24 +558,25 @@ with tabs_electro:
             textinfo='percent+label',
             pull=pull_list
         )
-       
+        
         st.plotly_chart(fig_pie_electro, use_container_width=True)
+        st.caption("Source : Rapport ADEME (2020) – La face cachée du numérique.")
+
         # Ajout d'une image pour illustrer le camembert
-        st.caption("Ce graphique détaille la contribution de chaque équipement et des DataCenters & réseaux à l'empreinte carbone globale du numérique (basé sur Electroniques2).")
-       
+        st.info("**Analyse :** En dehors des data centers et des réseaux, ce sont les smartphones qui contribuent le plus aux émissions, avec 15,2 de pourcentage, suivis des téléviseurs à hauteur de 14,6 de pourcentage. Presque la même chose que la suisse")        
 
 
     # -----------------------------------------------------------
-    # GRAPHIQUE 3 : Nuage de Points (Taille vs Puissance) - Electroniques3
+    # GRAPHIQUE 7 : Nuage de Points (Taille vs Puissance) - Electroniques3
     # -----------------------------------------------------------
     st.markdown("---")
-    st.subheader("3. Analyse : L'impact de la Taille d'Écran sur la Puissance Utilisée 📈")
-   
+    st.subheader(" Analyse : L'impact de la Taille d'Écran sur la Puissance Utilisée 📈")
+    
     if df_electro_size_power is None or df_electro_size_power.empty:
         st.error("Les données pour le nuage de points (Feuille Electroniques3) ne sont pas disponibles.")
     else:
         st.markdown("Nuage de Points : Puissance Utilisée (W) en fonction de la Taille d'Écran (pouces) pour 58 références.")
-       
+        
         fig_scatter = px.scatter(
             df_electro_size_power,
             x='Taille_Ecran_Pouces',
@@ -462,7 +589,7 @@ with tabs_electro:
             template="plotly_white",
             trendline="ols" # Requiert le module statsmodels
         )
-       
+        
         # Ajout de la ligne verticale pour la taille moyenne de 40 pouces
         fig_scatter.add_vline(
             x=40,
@@ -472,107 +599,69 @@ with tabs_electro:
             annotation_text="Taille moyenne d'un téléviseur en France (estimation)",
             annotation_position="top left"
         )
-       
-        st.plotly_chart(fig_scatter, use_container_width=True)
-        st.caption("Le graphique illustre comment la consommation électrique augmente avec la taille, avec une forte corrélation positive entre la taille et la puissance. Source : Inspiré de l'ADEME.")
-       
-   
-    # --- GRAPHIQUE 4 : Évolution de l'Impact Environnemental du Numérique (Scénario Tendanciel) ---
+        
+    st.plotly_chart(fig_scatter, use_container_width=True)
+    st.caption("Source : ADEME.")
+    st.info("**Analyse :**  plus la taille de l’écran augmente, plus la puissance consommée est élevée, ce qui entraîne une augmentation des émissions de carbone associées. Cette relation montre que, dans une optique de production et de consommation plus durables, il est préférable de privilégier des écrans de petite ou de taille moyenne afin de limiter l’impact environnemental.")
+    
+    # --- GRAPHIQUE 8 : Évolution de l'Impact Environnemental du Numérique ---
     st.markdown("---")
-    st.subheader("4. Scénario Tendanciel de l'Impact Environnemental du Numérique (2020-2050)")
-   
+    st.subheader(" Scénario Tendanciel de l'Impact Environnemental du Numérique (2020-2050)")
+
     if df_impact_numerique is None or df_impact_numerique.empty:
         st.error("Les données pour le Scénario Tendanciel (Feuille Electronique4) ne sont pas disponibles.")
     else:
         st.markdown(
-            """
-            Ce graphique montre l'augmentation de l'impact du numérique sans actions de réduction,
-            par rapport à l'année de référence 2020 (0%). L'empreinte carbone pourrait presque tripler en 2050.
-            """
+        """
+        Ce graphique montre l'augmentation de l'impact du numérique sans actions de réduction.
+        L'empreinte carbone pourrait presque tripler d'ici 2050.
+        """
         )
 
-
-        # Transformation du DataFrame de Large à Long pour Plotly
+        # 1. Préparation des données
         df_long_impact = df_impact_numerique.reset_index().melt(
             id_vars='Indicateur',
             var_name='Année',
             value_name='Augmentation_pourcentage'
-        )
-
-
-        # Conversion de l'année en numérique pour un axe X continu
+    )
         df_long_impact['Année'] = pd.to_numeric(df_long_impact['Année'])
-       
-        # Définition des couleurs pour coller au graphique source
+        
         couleurs = {
             'Empreinte carbone': '#DC3545',          
-            'Ressources utilisées*': '#FF69B4', # Pink
+            'Ressources utilisées*': '#FF69B4',
             'Consommation d\'énergie finale': '#34495E',
             'Consommation de métaux et minéraux': '#3498DB',
         }
-       
-        # Filtrer la Consommation d'énergie finale en 2030 si elle est à 4% pour coller à l'image
-        df_long_impact['Augmentation_pourcentage'] = np.where(
-            (df_long_impact['Indicateur'] == 'Consommation d\'énergie finale') & (df_long_impact['Année'] == 2030),
-            4,
-            df_long_impact['Augmentation_pourcentage']
-        )
-        # Filtrer Consommation de métaux et minéraux en 2030 si elle est à 14%
-        df_long_impact['Augmentation_pourcentage'] = np.where(
-            (df_long_impact['Indicateur'] == 'Consommation de métaux et minéraux') & (df_long_impact['Année'] == 2030),
-            14,
-            df_long_impact['Augmentation_pourcentage']
-        )
-       
-        # Ajout des données manquantes pour 2030 si elles ne sont pas dans le fichier source
-        for indicateur, val in [('Empreinte carbone', 45), ('Ressources utilisées*', 38)]:
-             if df_long_impact.loc[(df_long_impact['Indicateur'] == indicateur) & (df_long_impact['Année'] == 2030), 'Augmentation_pourcentage'].empty:
-                df_long_impact = pd.concat([df_long_impact, pd.DataFrame([{'Indicateur': indicateur, 'Année': 2030, 'Augmentation_pourcentage': val}])], ignore_index=True)
 
-
-
-
+        # 2. Création du graphique
         fig_impact = px.line(
             df_long_impact,
             x='Année',
             y='Augmentation_pourcentage',
             color='Indicateur',
-            title='Évolution du Scénario Tendanciel de l\'Impact Environnemental du Numérique (2020-2050)',
-            labels={
-                'Augmentation_pourcentage': 'Augmentation (%) par rapport à 2020',
-                'Année': 'Année'
-            },
+            title='Évolution de l\'Impact Environnemental (2020-2050)',
+            labels={'Augmentation_pourcentage': 'Augmentation (%)', 'Année': 'Année'},
             color_discrete_map=couleurs,
+            markers=True
         )
 
-
-        # Améliorations de l'affichage pour coller au style du graphique source
-        fig_impact.update_traces(mode='lines+markers', line=dict(width=3), marker=dict(size=8))
+        # 3. Personnalisation des axes et annotations
         fig_impact.update_layout(
-            yaxis_tickformat=".0f",
-            xaxis=dict(tickvals=[2020, 2030, 2050], tickformat=".0f"),
-            legend_title_text='Indicateur',
+            xaxis=dict(tickvals=[2020, 2030, 2050]),
             hovermode="x unified",
             height=550
         )
-       
-        # Ajout des étiquettes (2030 et 2050)
-        df_labels = df_long_impact[(df_long_impact['Année'] == 2030) | (df_long_impact['Année'] == 2050)].copy()
-       
-        for _, row in df_labels.iterrows():
-            color = couleurs.get(row['Indicateur'], 'black')
-           
-            fig_impact.add_annotation(
-                x=row['Année'],
-                y=row['Augmentation_pourcentage'],
-                text=f"+{row['Augmentation_pourcentage']:.0f} %",
-                showarrow=False,
-                yshift=10 if row['Année'] == 2050 else 15,
-                xshift=10 if row['Année'] == 2050 else 0,
-                font=dict(color=color, size=12, weight='bold')
-            )
-       
+
+        # Ajout des étiquettes de texte sur les points
+        for i, row in df_long_impact.iterrows():
+            if row['Année'] in [2030, 2050]:
+                fig_impact.add_annotation(
+                    x=row['Année'],
+                    y=row['Augmentation_pourcentage'],
+                    text=f"+{row['Augmentation_pourcentage']:.0f}%",
+                    showarrow=False,
+                    yshift=15
+                )
+
+        # --- ÉTAPE CRUCIALE MANQUANTE : Affichage dans Streamlit ---
         st.plotly_chart(fig_impact, use_container_width=True)
-        st.caption("Source : Inspiré du rapport sur l'impact environnemental du numérique.")
-               
-    st.markdown("---")
