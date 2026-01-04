@@ -364,6 +364,7 @@ with tab_elec :
         st.plotly_chart(fig_v2, use_container_width=True)
     else:
         st.error("Données 'Vehicules2' manquantes.")
+    st.caption("Source : Mobileservice")    
     st.info("**Analyse :** le recul des motorisations essence et diesel, parallèlement à la montée des véhicules électriques (BEV) et hybrides rechargeables (PHEV), traduisant une orientation progressive de la Suisse vers des modes de production et de mobilité plus durables. ")
 
     try:
@@ -447,7 +448,7 @@ with tabs_electro:
         )
         
         st.plotly_chart(fig_textile, use_container_width=True)
-        
+        st.caption("Source : ADEME – Base IMPACTS, Ecoinvent, Product Environmental Footprint (PEF)") 
         st.info("**Analyse :** La laine présente l'impact le plus élevé (jusqu'à 32 kg CO2e/kg en Pologne), tandis que le chanvre et le lin sont les options les plus durables.")
 
     
@@ -601,7 +602,7 @@ with tabs_electro:
         )
         
     st.plotly_chart(fig_scatter, use_container_width=True)
-    st.caption("Source : ADEME.")
+    st.caption("Source : Rapport ADEME (2020) – La face cachée du numérique.")
     st.info("**Analyse :**  plus la taille de l’écran augmente, plus la puissance consommée est élevée, ce qui entraîne une augmentation des émissions de carbone associées. Cette relation montre que, dans une optique de production et de consommation plus durables, il est préférable de privilégier des écrans de petite ou de taille moyenne afin de limiter l’impact environnemental.")
     
     # --- GRAPHIQUE 8 : Évolution de l'Impact Environnemental du Numérique ---
@@ -665,3 +666,4 @@ with tabs_electro:
 
         # --- ÉTAPE CRUCIALE MANQUANTE : Affichage dans Streamlit ---
         st.plotly_chart(fig_impact, use_container_width=True)
+        st.caption("Source : Rapport ADEME (2020) – La face cachée du numérique.")
