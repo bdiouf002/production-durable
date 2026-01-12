@@ -329,7 +329,7 @@ with tab_elec :
         st.plotly_chart(fig_vehicule, use_container_width=True)
     else:
         st.error("Les données des véhicules n'ont pas pu être chargées.")
-    st.caption("Source : Swiss eMobility")
+    st.caption("Source : Mobilservice(Swiss eMobility)")
     st.info("**Analyse :** les voitures à essence sont celles qui génèrent le plus d’émissions de CO₂, avec environ 264 g, suivies des voitures diesel à hauteur de 243 g. À l’inverse, les voitures électriques présentent l’empreinte carbone la plus faible.")
 
 
@@ -364,7 +364,7 @@ with tab_elec :
         st.plotly_chart(fig_v2, use_container_width=True)
     else:
         st.error("Données 'Vehicules2' manquantes.")
-    st.caption("Source : Swiss eMobility")    
+    st.caption("Source : Mobilservice(Swiss eMobility)")    
     st.info("**Analyse :** le recul des motorisations essence et diesel, parallèlement à la montée des véhicules électriques (BEV) et hybrides rechargeables (PHEV), traduisant une orientation progressive de la Suisse vers des modes de production et de mobilité plus durables. ")
 
     try:
@@ -376,7 +376,7 @@ with tab_elec :
     except FileNotFoundError:
         st.error("L'image locale est introuvable. Vérifiez le chemin : images/votre_image_locale.png")
     try:
-        st.image("image3.png", caption="Source : Swiss eMobility", use_container_width=True)
+        st.image("image3.png", caption="Source : Mobilservice(Swiss eMobility)", use_container_width=True)
     except FileNotFoundError:
         st.error("L'image locale est introuvable. Vérifiez le chemin : images/votre_image_locale.png")
 
